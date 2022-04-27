@@ -1,0 +1,166 @@
+//YWROBOT
+//Compatible with the Arduino IDE 1.0
+//Library version:1.1
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x20,20,4);  // set the LCD address to 0x27 for a 16 chars and 2 line display
+
+#define NOTE_E5  659
+#define NOTE_G5  784
+#define NOTE_E6  1319
+#define NOTE_C6  1047
+#define NOTE_D6  1175
+#define NOTE_G6  1568
+
+#define buzzer 11    //give the Buzzer an output pin location
+
+int sensorPin = A0;  // select the input pin for the potentiometer
+
+int LED = 2;         //give LED an output pin location
+
+
+//1-up quick tune, POWERUP Tune
+int melody[] = {
+  NOTE_E5, NOTE_G5, NOTE_E6, NOTE_C6, NOTE_D6, NOTE_G6
+};
+
+//tempo for the beat
+int tempo[] = {
+  12, 12, 12, 12, 12, 12,
+};
+
+//                       SETUP SECTION
+
+void setup()
+{
+  // code here runs once:
+  pinMode(11, OUTPUT);//buzzer
+  sing(1); //RUN ONCE, initiate all systems a go
+  
+  lcd.init();                      // initialize the lcd 
+  // Print a message to the LCD.
+  lcd.backlight();
+  lcd.setCursor(5,0);
+  lcd.print("Welcome");
+  lcd.setCursor(1,1);
+  lcd.print("All Systems Go!");
+}
+
+
+//                  TEMPERATURE LOOP, MAIN BODY
+
+
+void loop()
+{
+  lcd.init();
+  // read the value from the sensor:
+  int reading = analogRead(sensorPin);
+  // convert reading to voltage
+  float voltage = (reading * 5.0)/1024;
+  // print out voltage
+  Serial.print(voltage); Serial.println(" volts");
+  float temperatureC = (voltage - 0.5)*100;
+  //print temp (C)
+  Serial.print(temperatureC); Serial.println(" degrees Celsius");
+  // convert to F
+  float temperatureF = (temperatureC * (9.0/5.0)) + 32.0;
+  Serial.print(temperatureF); Serial.print(" degrees Fahrenheit");
+  delay(1000);
+  
+  lcd.setCursor(0,0);
+  lcd.print("Temp F is ");
+  lcd.print(temperatureF);
+  
+  lcd.setCursor(0,1);
+  lcd.print("Temp C is ");
+  lcd.print(temperatureC);
+
+  
+  if (temperatureF < 60 || temperatureF > 85)
+ {
+  lcd.backlight();
+  lcd.setCursor(0,0);
+  lcd.print("  TEMP WARNING! ");
+  if(temperatureF > 85)
+   {
+      lcd.backlight();
+      lcd.setCursor(0,1);
+      lcd.print("  Cool it down!   ");
+    }
+  if(temperatureF < 60)
+   {
+      lcd.backlight();
+      lcd.setCursor(0,1);
+      lcd.print("  Warm it up!   ");
+    }
+  
+ digitalWrite(LED, HIGH);
+ delay(100);//wait for 100ms
+ digitalWrite(LED, LOW);
+ delay(100);//wait for 100ms
+ tone(buzzer, 1000); // Send 1KHz sound signal...
+ delay(1000); // ...for 1 sec
+ noTone(buzzer); // Stop sound...
+ delay(1000); // ...for 1sec
+ }
+ else
+ {
+ digitalWrite(LED, LOW);
+ digitalWrite(buzzer, LOW); 
+}
+  
+}
+
+
+//                    POWER ON MELODY
+//                     *DON'T MODIFY*
+
+
+int song = 1;
+
+
+void sing(int s) {
+  // iterate over the notes of the melody:
+  song = s;
+  if (song == 1) {
+
+    Serial.println(" 'Mario Theme'");
+    int size = sizeof(melody) / sizeof(int);
+    for (int thisNote = 0; thisNote < size; thisNote++) {
+
+      // to calculate the note duration, take one second
+      // divided by the note type.
+      //e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
+      int noteDuration = 1000 / tempo[thisNote];
+
+      buzz(buzzer, melody[thisNote], noteDuration);
+
+      // to distinguish the notes, set a minimum time between them.
+      // the note's duration + 30% seems to work well:
+      int pauseBetweenNotes = noteDuration * 1.30;
+      delay(pauseBetweenNotes);
+
+      // stop the tone playing:
+      buzz(buzzer, 0, noteDuration);
+
+    }
+  }
+}
+
+void buzz(int targetPin, long frequency, long length) {
+  digitalWrite(13, HIGH);
+  long delayValue = 1000000 / frequency / 2; // calculate the delay value between transitions
+  //// 1 second's worth of microseconds, divided by the frequency, then split in half since
+  //// there are two phases to each cycle
+  long numCycles = frequency * length / 1000; // calculate the number of cycles for proper timing
+  //// multiply frequency, which is really cycles per second, by the number of seconds to
+  //// get the total number of cycles to produce
+  for (long i = 0; i < numCycles; i++) { // for the calculated length of time...
+    digitalWrite(targetPin, HIGH); // write the buzzer pin high to push out the diaphram
+    delayMicroseconds(delayValue); // wait for the calculated delay value
+    digitalWrite(targetPin, LOW); // write the buzzer pin low to pull back the diaphram
+    delayMicroseconds(delayValue); // wait again or the calculated delay value
+  }
+  digitalWrite(13, LOW);
+
+}
